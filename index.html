@@ -86,10 +86,10 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body data-theme="matcha">
+<body data-theme="sunset">
 
     <!-- Splash Screen: Shown during initial auth and data load -->
-    <div id="splash-screen" class="fixed inset-0 bg-primary flex items-center justify-center z-[100]">
+    <div id="splash-screen" class="fixed inset-0 bg-primary flex items-center justify-center z-[100] p-4">
         <img src="https://qaytrfhpqsajgfqedxak.supabase.co/storage/v1/object/public/assets/WhatsApp%20Image%202025-10-08%20at%2009.25.36_1c1533ac.jpg" alt="HXOUSE Logo" class="w-48 h-48 object-contain rounded-full">
     </div>
 
@@ -131,13 +131,13 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabase = self.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const STATIC_DATA = {
-    bestSellers: [10, 39, 61, 93], // IDs for Lotus Biscoff Cappuccino, Nutella Shake, Crispy Paneer Burger, Tandoori Paneer Pizza
+    bestSellers: [10, 39, 61, 84], // IDs for Lotus Biscoff Cappuccino, Nutella Shake, Crispy Paneer Burger, Tandoori Paneer Pizza
     captionIdeas: {
         student: [ "Fueling my study session with @hxousecoffeeco ☕️📚 #StudentLife", "Caffeine and concentration, courtesy of @hxousecoffeeco." ],
         office: [ "My real co-worker: this cup from @hxousecoffeeco 💼 #WorkFuel", "Turning coffee into code with @hxousecoffeeco." ],
         couple: [ "Coffee dates with my favorite person ❤️ @hxousecoffeeco", "Love is in the air, and it smells like coffee from @hxousecoffeeco." ],
         friends: [ "Good times and great coffee with the best crew! @hxousecoffeeco #Friends", "A perfect blend of friendship and coffee at @hxousecoffeeco!" ]
-    }
+    },
 };
 
 const sound = {
@@ -178,7 +178,7 @@ const app = {
         tableNumber: null,
         user: null,
         customerProfile: null,
-        theme: 'matcha',
+        theme: 'sunset',
         menuData: [],
         appSettings: {},
         orderSubscription: null,
@@ -207,7 +207,7 @@ const app = {
             this.state.user = session?.user;
             if (!this.state.user) {
                 const { data: signInData, error } = await supabase.auth.signInAnonymously();
-                if (error) {
+                 if (error) {
                     if (error.message.includes("Anonymous sign-ins are disabled")) {
                         $('#splash-screen').innerHTML = `
                             <div class="text-primary text-center p-6 bg-secondary rounded-xl shadow-lg max-w-sm mx-auto">
@@ -245,7 +245,7 @@ const app = {
 
         } catch (error) {
             console.error("CRITICAL: Initialization failed.", error);
-            $('#splash-screen').innerHTML = `<div class="text-primary text-center p-4">Could not load the app. Please check your connection and try again.</div>`;
+            $('#splash-screen').innerHTML = `<div class="text-primary text-center p-4">Could not load the app. Please check your connection and try again. <br><small>${error.message}</small></div>`;
         }
     },
 
@@ -266,30 +266,29 @@ const app = {
 
     async fetchMenuData() {
         try {
-            const { data: products, error } = await supabase
-                .from('products')
-                .select('*')
-                .order('id', { ascending: true });
-
+            const { data, error } = await supabase.from('products').select('*').order('id');
             if (error) throw error;
             
-            const menuByCategory = products.reduce((acc, product) => {
-                if (!acc[product.category]) {
-                    acc[product.category] = [];
+            // Group items by category
+            const groupedMenu = data.reduce((acc, item) => {
+                const category = item.category || 'Uncategorized';
+                if (!acc[category]) {
+                    acc[category] = [];
                 }
-                acc[product.category].push(product);
+                acc[category].push(item);
                 return acc;
             }, {});
 
-            this.state.menuData = Object.entries(menuByCategory).map(([category, items]) => ({
-                category,
-                items
+            // Convert to the format the app expects: [{ category: 'Name', items: [...] }]
+            this.state.menuData = Object.keys(groupedMenu).map(category => ({
+                category: category,
+                items: groupedMenu[category]
             }));
-
+            
         } catch (error) {
             console.error('Error fetching menu data:', error);
+            this.state.menuData = []; // Use empty menu on error
             ui.showToast('Could not load the menu.');
-            this.state.menuData = [];
         }
     },
     
@@ -330,7 +329,10 @@ const app = {
             id: this.state.user.id, name, 
             whatsapp_number: $('#mobile-number-input').value.trim() 
         }).select().single();
-        if (error) return ui.showToast('Could not save profile. Please try again.');
+        if (error) {
+            console.error('Onboarding error:', error);
+            return ui.showToast(`Could not save profile: ${error.message}`);
+        }
         
         this.state.customerProfile = data;
         this.state.tableNumber = tableNumber;
@@ -368,7 +370,10 @@ const app = {
     },
 
     navigateTo(page){
-        if (!this.state.customerProfile) return;
+        if (!this.state.customerProfile && page !== 'home') {
+             this.showOnboardingModal();
+             return;
+        }
         sound.play('click');
         this.state.currentPage = page;
         ui.renderHeader(page);
@@ -437,6 +442,7 @@ const app = {
 
             const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
             if (itemsError) {
+                // Attempt to roll back the order if items insertion fails
                 await supabase.from('orders').delete().eq('id', orderData.id);
                 throw itemsError;
             }
@@ -572,7 +578,7 @@ const ui = {
                 <h1 class="text-2xl font-bold brand-text">${config.title}</h1>
             </div>
             <div class="text-right">
-                <p class="font-semibold text-primary text-sm">${app.state.customerProfile.name}</p>
+                <p class="font-semibold text-primary text-sm">${app.state.customerProfile?.name || 'Guest'}</p>
                 <p class="text-xs text-secondary">Table #${app.state.tableNumber || 'N/A'}</p>
             </div>`;
     },
@@ -650,13 +656,24 @@ const ui = {
             return app.state.menuData.flatMap(c => c.items).find(item => item.id === id);
         }).filter(Boolean); // Filter out any undefined items if ID not found
 
-        const bestSellersHTML = bestSellerItems.map(item => `
-            <div onclick="ui.showItemDetailModal(${item.id})" class="cursor-pointer flex-shrink-0 w-40 bg-secondary rounded-xl p-3 flex flex-col items-center text-center">
-                <div class="text-5xl mb-2">${item.image_url || '🍴'}</div>
-                <h3 class="font-bold text-primary text-sm flex-grow">${item.name}</h3>
-                <p class="font-semibold text-secondary text-sm mt-1">₹${item.price}</p>
-            </div>
-        `).join('');
+        let bestSellersSectionHTML = '';
+        if (bestSellerItems.length > 0) {
+            const bestSellersItemsHTML = bestSellerItems.map(item => `
+                <div onclick="ui.showItemDetailModal(${item.id})" class="cursor-pointer flex-shrink-0 w-40 bg-secondary rounded-xl p-3 flex flex-col items-center text-center">
+                    <div class="text-5xl mb-2">${item.image_url || '🍴'}</div>
+                    <h3 class="font-bold text-primary text-sm flex-grow">${item.name}</h3>
+                    <p class="font-semibold text-secondary text-sm mt-1">₹${item.price}</p>
+                </div>
+            `).join('');
+
+            bestSellersSectionHTML = `
+                <div>
+                    <h2 class="text-2xl font-bold text-primary mb-4 px-1">Our Best Sellers</h2>
+                    <div class="horizontal-scroll flex space-x-4 overflow-x-auto pb-2">
+                        ${bestSellersItemsHTML}
+                    </div>
+                </div>`;
+        }
             
         $('#page-content').innerHTML = `
             <div class="space-y-6">
@@ -670,12 +687,7 @@ const ui = {
                 <div class="p-4 space-y-8">
                     ${activeOrderHTML ? `<div class="mb-6">${activeOrderHTML}</div>` : ''}
                     
-                    <div>
-                        <h2 class="text-2xl font-bold text-primary mb-4 px-1">Our Best Sellers</h2>
-                        <div class="horizontal-scroll flex space-x-4 overflow-x-auto pb-2">
-                            ${bestSellersHTML}
-                        </div>
-                    </div>
+                    ${bestSellersSectionHTML}
 
                     <div onclick="app.navigateTo('social')" class="cursor-pointer group relative bg-secondary rounded-xl p-6 overflow-hidden shadow-sm">
                         <h2 class="text-2xl font-bold text-primary">${promoTitle}</h2>
@@ -722,6 +734,7 @@ const ui = {
                 tab.classList.add('text-secondary');
             });
             tabElement.classList.add('brand-text', 'border-b-2', 'border-current');
+            tabElement.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
         }
         const data = app.state.menuData.find(d => d.category === category);
         this.renderMenuItems(data ? data.items.filter(i => i.is_available) : []);
@@ -983,24 +996,30 @@ const ui = {
     },
     
     async showOrderHistoryModal() {
-        const { data } = await supabase.from('orders').select(`*, order_items (products(name), quantity)`).eq('customer_id', app.state.user.id).order('created_at', { ascending: false });
-        const historyHTML = data?.length > 0 ? data.map(o => `
-            <div class="bg-secondary p-3 rounded-lg">
-                <div class="flex justify-between">
-                    <div>
-                        <p class="font-bold">Order #${o.id.slice(0, 6)}</p>
-                        <p class="text-xs text-secondary">${new Date(o.created_at).toLocaleString()}</p>
-                    </div>
-                    <p class="font-semibold">₹${o.total_amount}</p>
-                </div>
-                <div class="text-sm text-secondary mt-2">${o.order_items.map(i => `${i.products.name} (x${i.quantity})`).join(', ')}</div>
-            </div>`).join('') : '<p class="text-secondary text-center">No past orders found.</p>';
-        
         ui.showModal('history-modal', `
             <h2 class="text-xl font-bold text-center mb-4">Order History</h2>
-            <div class="space-y-3">${historyHTML}</div>
+            <div id="history-content" class="space-y-3"><div class="text-center p-4"><div class="spinner mx-auto"></div></div></div>
             <button onclick="ui.closeModal('history-modal')" class="w-full mt-6 bg-secondary font-semibold py-3 rounded-lg">Close</button>
         `);
+        
+        try {
+            const { data, error } = await supabase.from('orders').select(`*, order_items (products(name), quantity)`).eq('customer_id', app.state.user.id).order('created_at', { ascending: false });
+            if (error) throw error;
+            const historyHTML = data?.length > 0 ? data.map(o => `
+                <div class="bg-secondary p-3 rounded-lg">
+                    <div class="flex justify-between">
+                        <div>
+                            <p class="font-bold">Order #${o.id.slice(0, 6)}</p>
+                            <p class="text-xs text-secondary">${new Date(o.created_at).toLocaleString()}</p>
+                        </div>
+                        <p class="font-semibold">₹${o.total_amount}</p>
+                    </div>
+                    <div class="text-sm text-secondary mt-2">${o.order_items.map(i => i.products ? `${i.products.name} (x${i.quantity})` : 'Item not found').join(', ')}</div>
+                </div>`).join('') : '<p class="text-secondary text-center">No past orders found.</p>';
+            $('#history-content').innerHTML = historyHTML;
+        } catch (e) {
+             $('#history-content').innerHTML = `<p class="text-red-500 text-center">Could not load history: ${e.message}</p>`;
+        }
     }
 };
 
@@ -1163,6 +1182,5 @@ document.addEventListener('DOMContentLoaded', () => app.init());
 </script>
 </body>
 </html>
-
 
 
