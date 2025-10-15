@@ -115,7 +115,7 @@
     </div>
 
     <div id="intro-screen" class="fixed inset-0 bg-black z-[99] hidden">
-        <video id="intro-screen-video" src="https://dtrxqfujlcqxuouxbbnn.supabase.co/storage/v1/object/public/assets/Tandoori_Chai_Video_Script_Request.mp4" autoplay loop muted playsinline></video>
+        <video id="intro-screen-video" src="https://dtrxqfujlcqxuouxbbnn.supabase.co/storage/v1/object/public/assets/Tandoori_Chai_Video_Script_Request.mp4" autoplay loop playsinline></video>
         <div class="absolute inset-0 bg-black/50 flex flex-col items-center justify-end p-10 text-center text-white">
             <h1 class="font-heading text-4xl font-bold">A Story in Every Sip</h1>
             <p class="mt-2 mb-8">Experience the warmth of tradition.</p>
@@ -163,7 +163,7 @@ const sound = {
         const o = this.audioContext.createOscillator(), g = this.audioContext.createGain(), t = this.audioContext.currentTime;
         o.connect(g); g.connect(this.audioContext.destination); g.gain.setValueAtTime(0, t);
         const sounds = {
-            click: { f: 800, g: 0.3, l: 0.1, type: 'sine' }, // Increased gain and frequency
+            click: { f: 800, g: 0.3, l: 0.1, type: 'sine' },
             add: { f: 440, g: 0.15, l: 0.15, type: 'triangle' },
             success: { f: 523, f2: 659, g: 0.2, l: 0.25, type: 'sine' },
             win: { f: 587, f2: 880, g: 0.3, l: 0.3, type: 'sine' },
@@ -515,7 +515,7 @@ const ui = {
                 <div class="horizontal-scroll flex gap-4 overflow-x-auto py-4 -mx-5 px-5">
                     ${bestSellers.map(item => `
                         <div onclick="ui.showItemDetailModal(${item.id})" class="flex-shrink-0 w-40 bg-secondary rounded-2xl p-3 text-center cursor-pointer transition-transform hover:scale-105">
-                            <div class="text-6xl">${item.image_url || '☕'}</div>
+                            <div class="text-5xl h-16 flex items-center justify-center">${item.image_url || '☕'}</div>
                             <h4 class="font-bold mt-2 truncate text-primary">${item.name}</h4>
                             <p class="text-sm font-semibold text-secondary">₹${item.price}</p>
                         </div>
@@ -679,7 +679,7 @@ const ui = {
         
         ui.showModal('item-detail-modal', `
             <div class="text-center">
-                <div class="text-8xl mb-4">${item.image_url || '☕'}</div>
+                <div class="text-6xl mb-4">${item.image_url || '☕'}</div>
                 <h2 class="font-heading text-3xl font-bold text-primary">${item.name}</h2>
                 <p class="text-xl font-semibold brand-text">₹${item.price}</p>
                 <p class="text-secondary mt-4">${item.description || 'A delicious choice.'}</p>
@@ -747,7 +747,10 @@ const GAMES = {
                     <div id="chai-cross-board" class="grid grid-cols-3 gap-2 my-4 max-w-xs mx-auto">
                         ${Array(9).fill(0).map((_, i) => `<div class="aspect-square bg-secondary rounded-lg flex items-center justify-center text-5xl font-bold cursor-pointer" onclick="GAMES.chaiCross.play(${i})"></div>`).join('')}
                     </div>
-                    <button onclick="GAMES.chaiCross.start()" class="btn-primary">New Game</button>
+                    <div class="flex gap-4">
+                        <button onclick="ui.closeModal('chai-cross-modal')" class="w-full btn-secondary !text-primary !bg-secondary">Close</button>
+                        <button onclick="GAMES.chaiCross.start()" class="w-full btn-primary">New Game</button>
+                    </div>
                 </div>
             `);
         },
@@ -791,7 +794,7 @@ const GAMES = {
                     <div id="tandoor-tap-grid" class="grid grid-cols-3 gap-3 my-4 max-w-xs mx-auto">
                         ${Array(9).fill(0).map((_, i) => `<div class="aspect-square bg-secondary rounded-full flex items-center justify-center text-4xl cursor-pointer transition-all duration-200"></div>`).join('')}
                     </div>
-                    <button onclick="GAMES.tandoorTap.endGame()" class="btn-secondary !text-primary !bg-secondary">Quit</button>
+                    <button onclick="GAMES.tandoorTap.endGame()" class="btn-secondary !text-primary !bg-secondary">Close</button>
                 </div>
             `);
             this.runGame();
@@ -804,13 +807,14 @@ const GAMES = {
             this.timer = setInterval(() => {
                 timeLeft--;
                 if (timeEl) timeEl.textContent = timeLeft;
-                if (timeLeft <= 0) this.endGame(true);
+                if (timeLeft < 0) this.endGame(true);
             }, 1000);
 
             const gridItems = $$('#tandoor-tap-grid > div');
             gridItems.forEach(item => item.addEventListener('click', () => this.tap(item)));
 
             this.gameInterval = setInterval(() => {
+                if(!$('#tandoor-tap-grid')) { this.endGame(); return; }
                 gridItems.forEach(item => { item.textContent = ''; item.classList.remove('!bg-red-400') });
                 const randomIndex = Math.floor(Math.random() * 9);
                 gridItems[randomIndex].textContent = '🔥';
@@ -828,6 +832,7 @@ const GAMES = {
         endGame(gameOver = false) {
             clearInterval(this.timer);
             clearInterval(this.gameInterval);
+            this.timer = null; this.gameInterval = null;
             if(gameOver) {
                 const grid = $('#tandoor-tap-grid');
                 if(grid) grid.innerHTML = `<div class="col-span-3 text-center py-10"><p class="font-bold text-xl">Game Over!</p><p class="text-secondary">Your final score is ${this.score}</p></div>`;
@@ -850,7 +855,10 @@ const GAMES = {
                     <div id="guess-spice-grid" class="grid grid-cols-4 gap-2 my-4 max-w-xs mx-auto">
                         ${this.cards.map((spice, i) => `<div class="aspect-square bg-secondary rounded-lg flex items-center justify-center text-3xl cursor-pointer" data-index="${i}" data-spice="${spice}"></div>`).join('')}
                     </div>
-                    <button onclick="GAMES.guessTheSpice.start()" class="btn-primary">Restart</button>
+                    <div class="flex gap-4">
+                        <button onclick="ui.closeModal('guess-spice-modal')" class="w-full btn-secondary !text-primary !bg-secondary">Close</button>
+                        <button onclick="GAMES.guessTheSpice.start()" class="w-full btn-primary">Restart</button>
+                    </div>
                 </div>
             `);
             $$('#guess-spice-grid > div').forEach(card => card.addEventListener('click', () => this.flip(card)));
@@ -897,7 +905,7 @@ const GAMES = {
                         <p class="text-lg text-primary">Lives: <span id="chai-catch-lives">3</span></p>
                     </div>
                     <canvas id="chai-catch-canvas" class="bg-secondary rounded-lg w-full" width="300" height="400"></canvas>
-                    <button onclick="GAMES.chaiCatch.endGame()" class="mt-4 btn-secondary !text-primary !bg-secondary">Quit</button>
+                    <button onclick="GAMES.chaiCatch.endGame()" class="mt-4 btn-secondary !text-primary !bg-secondary">Close</button>
                 </div>
             `);
             const canvas = $('#chai-catch-canvas');
@@ -947,7 +955,7 @@ const GAMES = {
                         sound.play('lose');
                         const livesEl = $('#chai-catch-lives');
                         if (livesEl) livesEl.textContent = this.lives;
-                        if (this.lives <= 0) {
+                        if (this.lives < 0) {
                              this.endGame(true);
                              return; // Stop the loop immediately
                         }
@@ -964,6 +972,8 @@ const GAMES = {
             this.gameLoop = null; 
             
             if (gameOver) {
+                const livesEl = $('#chai-catch-lives');
+                if (livesEl) livesEl.textContent = 0;
                 const canvas = $('#chai-catch-canvas');
                 if (canvas) {
                     const ctx = canvas.getContext('2d');
