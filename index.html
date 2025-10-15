@@ -115,11 +115,19 @@
     </div>
 
     <div id="intro-screen" class="fixed inset-0 bg-black z-[99] hidden">
-        <video id="intro-screen-video" src="https://dtrxqfujlcqxuouxbbnn.supabase.co/storage/v1/object/public/assets/Tandoori_Chai_Video_Script_Request.mp4" autoplay loop playsinline></video>
-        <div class="absolute inset-0 bg-black/50 flex flex-col items-center justify-end p-10 text-center text-white">
-            <h1 class="font-heading text-4xl font-bold">A Story in Every Sip</h1>
-            <p class="mt-2 mb-8">Experience the warmth of tradition.</p>
-            <button onclick="app.enterApp()" class="btn-primary !bg-white !text-[#4E342E] w-full max-w-xs">Start Ordering</button>
+        <video id="intro-screen-video" src="https://dtrxqfujlcqxuouxbbnn.supabase.co/storage/v1/object/public/assets/Tandoori_Chai_Video_Script_Request.mp4" loop muted playsinline></video>
+        <div class="absolute inset-0 bg-black/60 flex flex-col items-center justify-end p-8 text-center text-white">
+            <div id="intro-content-start" class="w-full max-w-xs">
+                <h1 class="font-heading text-4xl font-bold">A Story in Every Sip</h1>
+                <p class="mt-2 mb-8">Experience the warmth of tradition.</p>
+                <button onclick="app.beginExperience()" class="btn-primary !bg-white !text-[#4E342E] w-full">Tap to Begin</button>
+            </div>
+            <div id="intro-content-form" class="hidden w-full max-w-xs space-y-4">
+                 <h2 class="font-heading text-2xl font-bold">Let's Get Started</h2>
+                 <input type="text" id="intro-name-input" class="w-full p-3 border border-gray-500 rounded-lg bg-black/30 text-white placeholder-gray-300 text-center" placeholder="What should we call you?" required>
+                 <input type="number" id="intro-table-input" class="w-full p-3 border border-gray-500 rounded-lg bg-black/30 text-white placeholder-gray-300 text-center" placeholder="Your Table Number" required>
+                 <button onclick="app.submitIntroDetails()" class="btn-primary !bg-white/90 !text-[#4E342E] w-full">Enter</button>
+            </div>
         </div>
     </div>
 
@@ -193,8 +201,7 @@ const app = {
         this.state.theme = savedTheme;
         this.applyTheme();
 
-        document.body.addEventListener('click', () => sound.init(), { once: true });
-        this.getTableNumberFromURL();
+        this.getTableNumberFromURL(); // Get table number early
         try {
             const { data: { session } } = await supabase.auth.getSession();
             this.state.user = session?.user;
@@ -209,8 +216,12 @@ const app = {
             splash.classList.add('fade-out');
             setTimeout(() => {
                 splash.remove();
-                $('#intro-screen').classList.remove('hidden');
-                $('#intro-screen').classList.add('fade-in');
+                if(this.state.customerProfile) {
+                     this.enterApp(true); // Skip intro if already onboarded
+                } else {
+                    $('#intro-screen').classList.remove('hidden');
+                    $('#intro-screen').classList.add('fade-in');
+                }
             }, 500);
 
         } catch (error) {
@@ -218,19 +229,55 @@ const app = {
             $('#splash-screen').innerHTML = `<div class="p-4 text-center"><p class="font-bold text-lg text-red-500">Connection Error</p><p class="text-secondary">Could not load the app. Please check your connection and refresh.</p></div>`;
         }
     },
+
+    beginExperience() {
+        sound.init(); // Init sound context on first tap
+        sound.play('click');
+        const video = $('#intro-screen-video');
+        if (video) {
+            video.muted = false;
+            video.currentTime = 0;
+            video.play().catch(e => console.error("Video play failed:", e));
+        }
+
+        $('#intro-content-start').classList.add('hidden');
+        $('#intro-content-form').classList.remove('hidden');
+        
+        // If table number is in URL, pre-fill it and hide the input
+        if (this.state.tableNumber) {
+            const tableInput = $('#intro-table-input');
+            tableInput.value = this.state.tableNumber;
+            tableInput.parentElement.classList.add('hidden');
+        }
+    },
+
+    async submitIntroDetails() {
+        sound.play('click');
+        const name = $('#intro-name-input').value.trim();
+        const tableNumber = parseInt($('#intro-table-input').value);
+
+        if (!name || isNaN(tableNumber)) return ui.showToast("Please enter your name and table number.");
+
+        const { data, error } = await supabase.from('customers').insert({ id: this.state.user.id, name }).select().single();
+        if (error) return ui.showToast('Could not save profile. Try again.');
+        
+        this.state.customerProfile = data;
+        this.state.tableNumber = tableNumber;
+        
+        this.enterApp(true);
+    },
     
-    enterApp() {
-        const intro = $('#intro-screen');
-        intro.classList.add('fade-out');
-        setTimeout(() => {
-            intro.remove();
-            $('#app').classList.remove('hidden');
-            $('#app').classList.add('flex', 'fade-in');
-            
-            if (!this.state.customerProfile) this.showOnboardingModal();
-            else if (this.state.tableNumber) this.startSession();
-            else this.showTableNumberModal();
-        }, 500);
+    enterApp(skipVideo = false) {
+        if(skipVideo){
+             const intro = $('#intro-screen');
+             if(intro) intro.classList.add('fade-out');
+             setTimeout(() => {
+                if(intro) intro.remove();
+                $('#app').classList.remove('hidden');
+                $('#app').classList.add('flex', 'fade-in');
+                this.startSession();
+            }, 500);
+        }
     },
 
     getTableNumberFromURL() {
@@ -262,50 +309,6 @@ const app = {
         this.state.appSettings = data.reduce((acc, { key, value }) => ({ ...acc, [key]: value }), {});
     },
     
-    showOnboardingModal() {
-        const tableInputHTML = !this.state.tableNumber 
-            ? `<input type="number" id="table-number-input" class="w-full p-3 border border-custom rounded-lg bg-secondary text-primary" placeholder="Your Table Number" required>` : '';
-        ui.showModal('onboarding-modal', `
-            <h2 class="font-heading text-2xl font-bold text-primary mb-2">Welcome to Namo Tandoori Chai</h2>
-            <p class="text-secondary mb-6">A few details to get you started.</p>
-            <form id="onboarding-form" class="space-y-4">
-                <input type="text" id="user-name-input" class="w-full p-3 border border-custom rounded-lg bg-secondary text-primary" placeholder="Your Name" required>
-                ${tableInputHTML}
-            </form>
-            <button onclick="app.completeOnboarding()" class="w-full mt-6 btn-primary">Let's Go</button>`);
-    },
-    
-    async completeOnboarding() {
-        const name = $('#user-name-input').value.trim();
-        let tableNumber = this.state.tableNumber;
-        if (!tableNumber) tableNumber = parseInt($('#table-number-input')?.value);
-        if (!name || isNaN(tableNumber)) return ui.showToast("Please fill in all details.");
-        
-        const { data, error } = await supabase.from('customers').insert({ id: this.state.user.id, name }).select().single();
-        if (error) return ui.showToast('Could not save profile. Please try again.');
-        
-        this.state.customerProfile = data;
-        this.state.tableNumber = tableNumber;
-        ui.closeModal('onboarding-modal');
-        this.startSession();
-    },
-    
-    showTableNumberModal() {
-        ui.showModal('table-number-modal', `
-            <h2 class="font-heading text-2xl font-bold text-primary mb-2">Welcome back, ${this.state.customerProfile.name}!</h2>
-            <p class="text-secondary mb-6">Please enter your table number for today's visit.</p>
-            <input type="number" id="table-number-input" class="w-full p-3 border border-custom rounded-lg bg-secondary" placeholder="Your Table Number" required>
-            <button onclick="app.completeTableNumberEntry()" class="w-full mt-6 btn-primary">Continue</button>`);
-    },
-
-    completeTableNumberEntry() {
-        const tableNumber = $('#table-number-input').value;
-        if (!tableNumber) return ui.showToast("Please enter your table number.");
-        this.state.tableNumber = parseInt(tableNumber);
-        ui.closeModal('table-number-modal');
-        this.startSession();
-    },
-
     async startSession() {
         await this.fetchActiveOrder();
         ui.render();
@@ -560,7 +563,7 @@ const ui = {
                     const cartItem = app.state.cart.find(ci => ci.id === item.id);
                     return `
                         <div class="bg-secondary p-3 rounded-xl flex items-center gap-4">
-                            <div class="text-4xl flex-shrink-0 w-16 h-16 flex items-center justify-center bg-primary rounded-lg">${item.image_url || '☕'}</div>
+                            <div class="text-3xl flex-shrink-0 w-16 h-16 flex items-center justify-center bg-primary rounded-lg">${item.image_url || '☕'}</div>
                             <div class="flex-grow min-w-0">
                                 <h3 class="font-bold truncate text-primary">${item.name}</h3>
                                 <p class="font-semibold text-secondary">₹${item.price}</p>
@@ -714,7 +717,6 @@ const ui = {
 // =================================================================================
 const GAMES = {
     list: [
-        { id: 'chaiCatch', title: 'Chai Catch', desc: 'Catch the falling tea leaves!', icon: '🍃' },
         { id: 'tandoorTap', title: 'Tandoor Tap', desc: 'Tap the hot kulhads!', icon: '🔥' },
         { id: 'guessTheSpice', title: 'Guess the Spice', desc: 'A quick memory game.', icon: '🌶️' },
         { id: 'chaiCross', title: 'Chai-Cross', desc: 'A classic game of Tic-Tac-Toe.', icon: '⚔️' },
@@ -887,107 +889,6 @@ const GAMES = {
                     c2.classList.remove('flipped', '!bg-brand-secondary');
                     this.flippedCards = [];
                 }, 1000);
-            }
-        }
-    },
-    
-    chaiCatch: {
-        gameLoop: null, score: 0, lives: 3,
-        catcher: { x: 150, y: 350, width: 80, height: 40 },
-        leaves: [],
-        start() {
-            this.score = 0; this.lives = 3; this.leaves = [];
-            ui.showModal('chai-catch-modal', `
-                <div class="text-center">
-                    <h2 class="font-heading text-2xl font-bold text-primary">Chai Catch</h2>
-                    <div class="flex justify-between items-center my-2 font-bold">
-                        <p class="text-lg text-primary">Score: <span id="chai-catch-score">0</span></p>
-                        <p class="text-lg text-primary">Lives: <span id="chai-catch-lives">3</span></p>
-                    </div>
-                    <canvas id="chai-catch-canvas" class="bg-secondary rounded-lg w-full" width="300" height="400"></canvas>
-                    <button onclick="GAMES.chaiCatch.endGame()" class="mt-4 btn-secondary !text-primary !bg-secondary">Close</button>
-                </div>
-            `);
-            const canvas = $('#chai-catch-canvas');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            
-            const moveCatcher = (e) => {
-                const rect = canvas.getBoundingClientRect();
-                let touchX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
-                this.catcher.x = touchX - rect.left - (this.catcher.width / 2);
-                if (this.catcher.x < 0) this.catcher.x = 0;
-                if (this.catcher.x > canvas.width - this.catcher.width) this.catcher.x = canvas.width - this.catcher.width;
-            };
-
-            canvas.addEventListener('mousemove', moveCatcher);
-            canvas.addEventListener('touchmove', (e) => { e.preventDefault(); moveCatcher(e); }, { passive: false });
-
-            let spawnRate = 2000;
-            const spawnLeaf = () => {
-                if (!this.gameLoop) return; // Stop spawning if game ended
-                this.leaves.push({ x: Math.random() * (canvas.width - 20), y: -20, speed: 1 + Math.random() * 2 });
-                setTimeout(spawnLeaf, spawnRate);
-            };
-
-            const update = () => {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-primary');
-                ctx.fillRect(this.catcher.x, this.catcher.y, this.catcher.width, this.catcher.height);
-                ctx.fillRect(this.catcher.x - 10, this.catcher.y + 5, 10, 20);
-
-                ctx.font = '24px sans-serif';
-                for (let i = this.leaves.length - 1; i >= 0; i--) {
-                    const leaf = this.leaves[i];
-                    leaf.y += leaf.speed;
-                    ctx.fillText('🍃', leaf.x, leaf.y);
-
-                    if (leaf.y > this.catcher.y && leaf.y < this.catcher.y + this.catcher.height && 
-                        leaf.x > this.catcher.x && leaf.x < this.catcher.x + this.catcher.width) {
-                        this.leaves.splice(i, 1);
-                        this.score++;
-                        sound.play('add');
-                        $('#chai-catch-score').textContent = this.score;
-                    } else if (leaf.y > canvas.height) {
-                        this.leaves.splice(i, 1);
-                        this.lives--;
-                        sound.play('lose');
-                        const livesEl = $('#chai-catch-lives');
-                        if (livesEl) livesEl.textContent = this.lives;
-                        if (this.lives < 0) {
-                             this.endGame(true);
-                             return; // Stop the loop immediately
-                        }
-                    }
-                }
-                if(this.gameLoop) this.gameLoop = requestAnimationFrame(update);
-            };
-
-            this.gameLoop = requestAnimationFrame(update);
-            spawnLeaf();
-        },
-        endGame(gameOver = false) {
-            if (this.gameLoop) cancelAnimationFrame(this.gameLoop);
-            this.gameLoop = null; 
-            
-            if (gameOver) {
-                const livesEl = $('#chai-catch-lives');
-                if (livesEl) livesEl.textContent = 0;
-                const canvas = $('#chai-catch-canvas');
-                if (canvas) {
-                    const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.fillStyle = 'white';
-                    ctx.font = 'bold 30px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2 - 20);
-                    ctx.font = '20px sans-serif';
-                    ctx.fillText(`Score: ${this.score}`, canvas.width / 2, canvas.height / 2 + 20);
-                }
-            } else {
-                 ui.closeModal('chai-catch-modal');
             }
         }
     }
