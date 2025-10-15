@@ -43,6 +43,7 @@
             -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
             min-height: var(--app-height); min-height: -webkit-fill-available;
             overflow: hidden;
+            overflow-x: hidden;
         }
 
         .font-heading { font-family: 'Lora', serif; }
@@ -51,7 +52,7 @@
             background-color: var(--bg-primary); 
             transition: background-color 0.4s ease;
         }
-        .app-container { height: var(--app-height); }
+        .app-container { height: var(--app-height); overflow-x: hidden; width: 100%; }
         .text-primary, .text-secondary, .font-heading, .nav-item span, .btn-secondary { transition: color 0.4s ease; }
         
         main { overflow-y: auto; -webkit-overflow-scrolling: touch; }
@@ -216,7 +217,7 @@ const app = {
             splash.classList.add('fade-out');
             setTimeout(() => {
                 splash.remove();
-                if(this.state.customerProfile) {
+                if(this.state.customerProfile && this.state.tableNumber) {
                      this.enterApp(true); // Skip intro if already onboarded
                 } else {
                     $('#intro-screen').classList.remove('hidden');
@@ -243,11 +244,10 @@ const app = {
         $('#intro-content-start').classList.add('hidden');
         $('#intro-content-form').classList.remove('hidden');
         
-        // If table number is in URL, pre-fill it and hide the input
         if (this.state.tableNumber) {
             const tableInput = $('#intro-table-input');
             tableInput.value = this.state.tableNumber;
-            tableInput.parentElement.classList.add('hidden');
+            tableInput.classList.add('hidden');
         }
     },
 
@@ -259,16 +259,22 @@ const app = {
         if (!name || isNaN(tableNumber)) return ui.showToast("Please enter your name and table number.");
 
         const { data, error } = await supabase.from('customers').insert({ id: this.state.user.id, name }).select().single();
-        if (error) return ui.showToast('Could not save profile. Try again.');
-        
-        this.state.customerProfile = data;
+        if (error) {
+            if (error.code === '23505') { // Unique constraint violation, user exists
+                 await this.fetchCustomerProfile();
+            } else {
+                return ui.showToast('Could not save profile. Try again.');
+            }
+        } else {
+             this.state.customerProfile = data;
+        }
+
         this.state.tableNumber = tableNumber;
-        
         this.enterApp(true);
     },
     
-    enterApp(skipVideo = false) {
-        if(skipVideo){
+    enterApp(skipIntro = false) {
+        if(skipIntro){
              const intro = $('#intro-screen');
              if(intro) intro.classList.add('fade-out');
              setTimeout(() => {
@@ -310,6 +316,13 @@ const app = {
     },
     
     async startSession() {
+        if (!this.state.customerProfile || !this.state.tableNumber) {
+            const intro = $('#intro-screen');
+            if(intro) intro.remove(); 
+            $('#app').classList.add('hidden');
+            this.init(); 
+            return;
+        }
         await this.fetchActiveOrder();
         ui.render();
         this.navigateTo('home');
@@ -517,9 +530,9 @@ const ui = {
                 <h3 class="font-heading text-2xl font-bold text-primary">Our Specials</h3>
                 <div class="horizontal-scroll flex gap-4 overflow-x-auto py-4 -mx-5 px-5">
                     ${bestSellers.map(item => `
-                        <div onclick="ui.showItemDetailModal(${item.id})" class="flex-shrink-0 w-40 bg-secondary rounded-2xl p-3 text-center cursor-pointer transition-transform hover:scale-105">
-                            <div class="text-5xl h-16 flex items-center justify-center">${item.image_url || '☕'}</div>
-                            <h4 class="font-bold mt-2 truncate text-primary">${item.name}</h4>
+                        <div onclick="ui.showItemDetailModal(${item.id})" class="flex-shrink-0 w-36 bg-secondary rounded-2xl p-3 text-center cursor-pointer transition-transform hover:scale-105">
+                            <div class="text-4xl h-14 flex items-center justify-center">${item.image_url || '☕'}</div>
+                            <h4 class="font-bold mt-1 text-sm truncate text-primary">${item.name}</h4>
                             <p class="text-sm font-semibold text-secondary">₹${item.price}</p>
                         </div>
                     `).join('')}
@@ -550,7 +563,7 @@ const ui = {
         
         return `
             <div class="sticky top-0 bg-primary z-10 py-2">
-                <div class="horizontal-scroll flex gap-5 px-4 pb-2 overflow-x-auto border-b border-custom">
+                <div class="horizontal-scroll flex gap-4 px-4 pb-2 overflow-x-auto border-b border-custom">
                     ${app.state.menuData.map(c => `<button 
                         class="category-tab whitespace-nowrap font-semibold py-2 text-primary ${app.state.currentMenuCategory === c.category ? 'brand-text border-b-2 border-brand-primary' : 'text-secondary'}" 
                         onclick="app.state.currentMenuCategory = '${c.category}'; ui.render();">
@@ -558,14 +571,14 @@ const ui = {
                     </button>`).join('')}
                 </div>
             </div>
-            <div class="p-5 grid gap-3">
+            <div class="p-4 grid gap-3">
                 ${currentItems.length > 0 ? currentItems.filter(i => i.is_available).map(item => {
                     const cartItem = app.state.cart.find(ci => ci.id === item.id);
                     return `
-                        <div class="bg-secondary p-3 rounded-xl flex items-center gap-4">
-                            <div class="text-3xl flex-shrink-0 w-16 h-16 flex items-center justify-center bg-primary rounded-lg">${item.image_url || '☕'}</div>
+                        <div class="bg-secondary p-3 rounded-xl flex items-center gap-3">
+                            <div class="text-3xl flex-shrink-0 w-14 h-14 flex items-center justify-center bg-primary rounded-lg">${item.image_url || '☕'}</div>
                             <div class="flex-grow min-w-0">
-                                <h3 class="font-bold truncate text-primary">${item.name}</h3>
+                                <h3 class="font-bold text-sm truncate text-primary">${item.name}</h3>
                                 <p class="font-semibold text-secondary">₹${item.price}</p>
                             </div>
                             <div class="flex-shrink-0">
@@ -576,7 +589,7 @@ const ui = {
                                         <button onclick="app.addOrUpdateCart(${item.id}, 1)" class="w-7 h-7 rounded-full brand-bg text-lg font-bold">+</button>
                                     </div>
                                 ` : `
-                                    <button onclick="app.addOrUpdateCart(${item.id}, 1)" class="w-10 h-10 rounded-full brand-bg text-2xl font-bold shadow-md">+</button>
+                                    <button onclick="app.addOrUpdateCart(${item.id}, 1)" class="w-9 h-9 rounded-full brand-bg text-2xl font-bold shadow-md">+</button>
                                 `}
                             </div>
                         </div>`;
@@ -682,7 +695,7 @@ const ui = {
         
         ui.showModal('item-detail-modal', `
             <div class="text-center">
-                <div class="text-6xl mb-4">${item.image_url || '☕'}</div>
+                <div class="text-5xl mb-4">${item.image_url || '☕'}</div>
                 <h2 class="font-heading text-3xl font-bold text-primary">${item.name}</h2>
                 <p class="text-xl font-semibold brand-text">₹${item.price}</p>
                 <p class="text-secondary mt-4">${item.description || 'A delicious choice.'}</p>
