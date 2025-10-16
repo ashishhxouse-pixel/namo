@@ -7,18 +7,18 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         /* --- THEMES & STYLES --- */
-        :root {
-            --brand-primary: #D84315; 
-            --brand-secondary: #FFAB91;
-            --bg-primary: #FDFCFB;    
-            --bg-secondary: #F3EAE2;  
-            --text-primary: #4E342E;  
-            --text-secondary: #795548;
-            --border-color: #D7CCC8; 
+        :root, [data-theme="tapri"] {
+            --brand-primary: #E65100; /* Rustic Orange */
+            --brand-secondary: #FFB74D; /* Light Amber */
+            --bg-primary: #3E2723;     /* Dark Wood Brown */
+            --bg-secondary: #4E342E;   /* Lighter Wood Brown */
+            --text-primary: #FFF8E1;   /* Creamy White */
+            --text-secondary: #D7CCC8;  /* Light Stone Grey */
+            --border-color: #5D4037;   /* Medium Wood Brown */
             --app-height: 100vh;
         }
         
@@ -46,19 +46,24 @@
             overflow-x: hidden;
         }
 
-        .font-heading { font-family: 'Lora', serif; }
+        .font-heading { font-family: 'Kalam', cursive; }
 
         .app-container, body, .bg-primary, .bg-secondary, .modal-content { 
             background-color: var(--bg-primary); 
             transition: background-color 0.4s ease;
         }
-        .app-container { height: var(--app-height); overflow-x: hidden; width: 100%; }
+        .app-container { 
+            height: var(--app-height); 
+            overflow-x: hidden; 
+            width: 100%;
+            background-image: url('https://www.transparenttextures.com/patterns/wood-pattern.png');
+        }
         .text-primary, .text-secondary, .font-heading, .nav-item span, .btn-secondary { transition: color 0.4s ease; }
         
         main { overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
         .brand-text { color: var(--brand-primary); }
-        .brand-bg { background-color: var(--brand-primary); color: var(--bg-primary); }
+        .brand-bg { background-color: var(--brand-primary); color: #3E2723; }
         .border-custom { border-color: var(--border-color); }
         .bg-primary { background-color: var(--bg-primary); }
         .bg-secondary { background-color: var(--bg-secondary); }
@@ -75,22 +80,19 @@
         
         .btn-primary {
             background-color: var(--brand-primary); color: var(--bg-primary);
-            font-weight: 600; border-radius: 0.75rem; padding: 0.875rem 1.5rem;
+            font-weight: 700; border-radius: 0.5rem; padding: 0.75rem 1.25rem;
             transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.4s ease;
-            box-shadow: 0 4px 15px -5px rgba(216, 67, 21, 0.5);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-bottom: 2px solid rgba(0,0,0,0.2);
         }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px -5px rgba(216, 67, 21, 0.6); }
+        .btn-primary:active { transform: translateY(1px); box-shadow: 0 2px 3px rgba(0,0,0,0.3); }
 
         .btn-secondary {
             background-color: var(--bg-secondary); color: var(--text-primary);
-            font-weight: 600; border-radius: 0.75rem; padding: 0.75rem 1.5rem;
+            font-weight: 600; border-radius: 0.5rem; padding: 0.75rem 1.5rem;
             border: 1px solid var(--border-color); transition: background-color 0.2s ease;
         }
 
-        .modal-content {
-            background-color: var(--bg-primary); border-radius: 1.5rem 1.5rem 0 0;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.15); max-height: 85vh; overflow-y: auto;
-        }
+        .modal-content { border-radius: 1.5rem 1.5rem 0 0; box-shadow: 0 -10px 40px rgba(0,0,0,0.15); max-height: 85vh; overflow-y: auto; }
         
         .spinner {
             border: 2px solid var(--brand-secondary); border-top: 2px solid var(--bg-primary);
@@ -100,14 +102,16 @@
         .horizontal-scroll::-webkit-scrollbar { display: none; }
         .horizontal-scroll { scrollbar-width: none; -ms-overflow-style: none; }
 
-        #intro-screen-video {
-            position: absolute; top: 50%; left: 50%;
-            width: 100%; height: 100%; object-fit: cover;
-            transform: translate(-50%, -50%); z-index: -1;
-        }
+        #intro-screen-video { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; object-fit: cover; transform: translate(-50%, -50%); z-index: -1; }
+        
+        .nav-item.active svg { color: var(--brand-primary); }
+        .nav-item.active span { color: var(--brand-primary); font-weight: 700; }
+        
+        .category-tab { padding: 0.5rem 0.25rem; }
+
     </style>
 </head>
-<body data-theme="terracotta">
+<body data-theme="tapri">
 
     <div id="splash-screen" class="fixed inset-0 bg-primary flex flex-col items-center justify-center z-[100] fade-in">
         <img src="https://dtrxqfujlcqxuouxbbnn.supabase.co/storage/v1/object/public/assets/2025-07-12.jpg" alt="Namo Tandoori Chai Logo" class="w-32 h-32 rounded-full object-cover shadow-lg">
@@ -194,11 +198,11 @@ const app = {
     state: {
         currentPage: 'home', cart: [], activeOrder: null, tableNumber: null,
         user: null, customerProfile: null, menuData: [], appSettings: {}, 
-        orderSubscription: null, currentMenuCategory: null, theme: 'terracotta'
+        orderSubscription: null, currentMenuCategory: null, theme: 'tapri'
     },
     
     async init() {
-        const savedTheme = localStorage.getItem('namo-chai-theme') || 'terracotta';
+        const savedTheme = localStorage.getItem('namo-chai-theme') || 'tapri';
         this.state.theme = savedTheme;
         this.applyTheme();
 
@@ -211,18 +215,22 @@ const app = {
                 if (error) throw new Error(`Anonymous sign-in failed: ${error.message}`);
                 this.state.user = data.user;
             }
-            await Promise.all([ this.fetchCustomerProfile(), this.fetchMenuData(), this.fetchAppSettings() ]);
+            // Fetch profile first
+            await this.fetchCustomerProfile();
             
             const splash = $('#splash-screen');
             splash.classList.add('fade-out');
-            setTimeout(() => {
+            setTimeout(async () => {
                 splash.remove();
                 if(this.state.customerProfile && this.state.tableNumber) {
-                     this.enterApp(true); // Skip intro if already onboarded
+                     this.enterApp(true);
                 } else {
                     $('#intro-screen').classList.remove('hidden');
                     $('#intro-screen').classList.add('fade-in');
                 }
+                // Fetch menu data in the background
+                this.fetchMenuData();
+                this.fetchAppSettings();
             }, 500);
 
         } catch (error) {
@@ -258,17 +266,13 @@ const app = {
 
         if (!name || isNaN(tableNumber)) return ui.showToast("Please enter your name and table number.");
 
-        const { data, error } = await supabase.from('customers').insert({ id: this.state.user.id, name }).select().single();
-        if (error) {
-            if (error.code === '23505') { // Unique constraint violation, user exists
-                 await this.fetchCustomerProfile();
-            } else {
-                return ui.showToast('Could not save profile. Try again.');
-            }
-        } else {
-             this.state.customerProfile = data;
+        const { data, error } = await supabase.from('customers').upsert({ id: this.state.user.id, name }, { onConflict: 'id' }).select().single();
+       
+        if (error && error.code !== '23505') { // 23505 is unique violation, which upsert handles. Catch other errors.
+            return ui.showToast('Could not save profile. Try again.');
         }
-
+        
+        this.state.customerProfile = data;
         this.state.tableNumber = tableNumber;
         this.enterApp(true);
     },
@@ -307,6 +311,8 @@ const app = {
             cat.items.push(item);
             return acc;
         }, []);
+        // Re-render if the user is already on the order page when data arrives
+        if(this.state.currentPage === 'order') ui.renderPageContent();
     },
     
     async fetchAppSettings() {
@@ -361,10 +367,10 @@ const app = {
 
     calculateCartTotal() { return this.state.cart.reduce((t, i) => t + (i.price * i.quantity), 0); },
     
-    async placeOrder(paymentMethod, btnElement) {
+    async placeOrder(btnElement) {
         if (this.state.cart.length === 0) return;
         btnElement.disabled = true;
-        btnElement.innerHTML = `<span class="flex items-center justify-center"><div class="spinner mr-2"></div> Processing...</span>`;
+        btnElement.innerHTML = `<span class="flex items-center justify-center"><div class="spinner mr-2"></div> Placing Order...</span>`;
         
         try {
             const { data: tableData, error: tableError } = await supabase.from('tables').select('id').eq('table_number', this.state.tableNumber).single();
@@ -372,7 +378,7 @@ const app = {
             
             const { data: orderData, error: orderError } = await supabase.from('orders').insert({
                 customer_id: this.state.user.id, table_id: tableData.id,
-                total_amount: this.calculateCartTotal(), payment_method: paymentMethod
+                total_amount: this.calculateCartTotal(), payment_method: 'Pay at Counter'
             }).select().single();
             if (orderError) throw orderError;
             
@@ -384,7 +390,6 @@ const app = {
                 await supabase.from('orders').delete().eq('id', orderData.id); // Rollback
                 throw itemsError;
             }
-            ui.closeModal('payment-modal');
             this.state.cart = [];
             await this.fetchActiveOrder();
             sound.play('success');
@@ -393,7 +398,7 @@ const app = {
             console.error("Order failed:", error);
             ui.showToast(`Order failed: ${error.message}`);
             btnElement.disabled = false;
-            btnElement.innerHTML = paymentMethod === 'Pay at Counter' ? 'Confirm: Pay at Counter' : 'Confirm: Pay Online';
+            btnElement.innerHTML = 'Place Order';
         }
     },
     
@@ -591,9 +596,9 @@ const ui = {
                             <div class="flex-shrink-0">
                                 ${cartItem ? `
                                     <div class="flex items-center gap-2 bg-primary rounded-full p-1">
-                                        <button onclick="app.addOrUpdateCart(${item.id}, -1)" class="w-7 h-7 rounded-full brand-bg text-lg font-bold">-</button>
+                                        <button onclick="app.addOrUpdateCart(${item.id}, -1)" class="w-7 h-7 rounded-full brand-bg text-lg font-bold flex items-center justify-center">-</button>
                                         <span class="font-bold w-6 text-center text-primary">${cartItem.quantity}</span>
-                                        <button onclick="app.addOrUpdateCart(${item.id}, 1)" class="w-7 h-7 rounded-full brand-bg text-lg font-bold">+</button>
+                                        <button onclick="app.addOrUpdateCart(${item.id}, 1)" class="w-7 h-7 rounded-full brand-bg text-lg font-bold flex items-center justify-center">+</button>
                                     </div>
                                 ` : `
                                     <button onclick="app.addOrUpdateCart(${item.id}, 1)" class="w-9 h-9 rounded-full brand-bg text-2xl font-bold shadow-md flex items-center justify-center">+</button>
@@ -633,7 +638,7 @@ const ui = {
                 <div class="p-5 mt-4 flex-shrink-0">
                     <div class="bg-secondary rounded-xl p-4">
                         <div class="flex justify-between items-center"><span class="text-xl font-bold text-primary">Total</span><span class="text-xl font-bold brand-text">₹${total.toFixed(2)}</span></div>
-                        <button onclick="ui.showPaymentModal()" class="w-full mt-4 btn-primary">Proceed to Payment</button>
+                        <button onclick="app.placeOrder(this)" class="w-full mt-4 btn-primary">Place Order (Pay at Counter)</button>
                     </div>
                 </div>
             </div>`;
@@ -686,17 +691,6 @@ const ui = {
         `;
     },
     
-    showPaymentModal(){
-         ui.showModal('payment-modal', `
-            <h2 class="font-heading text-2xl font-bold text-primary mb-4">Select Payment</h2>
-            <div class="space-y-3">
-                <button onclick="app.placeOrder('Pay at Counter', this)" class="w-full text-left bg-secondary p-4 rounded-xl flex items-center gap-4"><span class="text-3xl">💵</span><span class="font-semibold text-lg text-primary">Pay at Counter</span></button>
-                <button onclick="app.placeOrder('UPI / QR Code', this)" class="w-full text-left bg-secondary p-4 rounded-xl flex items-center gap-4"><span class="text-3xl">📱</span><span class="font-semibold text-lg text-primary">UPI / QR Code</span></button>
-            </div>
-            <button onclick="ui.closeModal('payment-modal')" class="w-full mt-6 btn-secondary !text-primary !bg-secondary">Cancel</button>
-        `);
-    },
-    
     showItemDetailModal(itemId) {
         const item = app.state.menuData.flatMap(c => c.items).find(i => i.id === itemId); if (!item) return;
         
@@ -716,7 +710,7 @@ const ui = {
     
     showThemeModal() {
         const themes = [
-            { id: 'terracotta', name: 'Terracotta', icon: '🏺' },
+            { id: 'tapri', name: 'Tapri', icon: '🔥' },
             { id: 'midnight', name: 'Midnight Masala', icon: '🌙' },
             { id: 'minty', name: 'Minty Morning', icon: '🌿' },
         ];
