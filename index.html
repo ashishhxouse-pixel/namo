@@ -580,11 +580,13 @@ const ui = {
                 ${currentItems.length > 0 ? currentItems.filter(i => i.is_available).map(item => {
                     const cartItem = app.state.cart.find(ci => ci.id === item.id);
                     return `
-                        <div class="bg-secondary p-3 rounded-xl flex items-center gap-3">
-                            <div class="text-3xl flex-shrink-0 w-14 h-14 flex items-center justify-center bg-primary rounded-lg">${item.image_url || '☕'}</div>
-                            <div class="flex-grow min-w-0">
-                                <h3 class="font-bold text-sm truncate text-primary">${item.name}</h3>
-                                <p class="font-semibold text-secondary">₹${item.price}</p>
+                        <div class="bg-secondary p-3 rounded-xl flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="text-3xl flex-shrink-0 w-14 h-14 flex items-center justify-center bg-primary rounded-lg">${item.image_url || '☕'}</div>
+                                <div class="min-w-0">
+                                    <h3 class="font-bold text-sm truncate text-primary">${item.name}</h3>
+                                    <p class="font-semibold text-xs text-secondary">₹${item.price}</p>
+                                </div>
                             </div>
                             <div class="flex-shrink-0">
                                 ${cartItem ? `
@@ -594,7 +596,7 @@ const ui = {
                                         <button onclick="app.addOrUpdateCart(${item.id}, 1)" class="w-7 h-7 rounded-full brand-bg text-lg font-bold">+</button>
                                     </div>
                                 ` : `
-                                    <button onclick="app.addOrUpdateCart(${item.id}, 1)" class="w-9 h-9 rounded-full brand-bg text-2xl font-bold shadow-md">+</button>
+                                    <button onclick="app.addOrUpdateCart(${item.id}, 1)" class="w-9 h-9 rounded-full brand-bg text-2xl font-bold shadow-md flex items-center justify-center">+</button>
                                 `}
                             </div>
                         </div>`;
