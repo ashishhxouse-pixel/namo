@@ -418,6 +418,11 @@ const app = {
                 if (['delivered', 'cancelled'].includes(updatedOrder.status)) {
                     supabase.removeChannel(this.state.orderSubscription);
                     this.state.orderSubscription = null;
+                    if (updatedOrder.status === 'delivered') {
+                        ui.showToast('Your order has been delivered!');
+                    } else {
+                        ui.showToast('Your order has been cancelled.');
+                    }
                     this.state.activeOrder = null;
                 }
                 ui.render();
@@ -915,4 +920,5 @@ document.addEventListener('DOMContentLoaded', () => app.init());
 </script>
 </body>
 </html>
+
 
